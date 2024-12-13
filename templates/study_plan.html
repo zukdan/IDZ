@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Учебный план</title>
+    <link rel="stylesheet" href="idz/static/css.css">
+</head>
+<body>
+    <h1>Учебный план</h1>
+
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+
+    {% if study_plan %}
+        <h2>Всего курсов: {{ study_plan.total_courses }}</h2>
+        
+        <ul class="course-list">
+            {% for course in study_plan.courses %}
+                <li class="course-item">
+                    <span class="course-title">{{ course.title }}</span><br>
+                    <span class="course-description">{{ course.description }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Учебный план отсутствует.</p>
+    {% endif %}
+    
+    <a class="back-link" href="index.html">Назад на главную</a>
+</body>
+</html>

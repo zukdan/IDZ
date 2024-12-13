@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDZ</title>
+    <link rel="stylesheet" href="idz/static/css.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Поиск курсов по требованиям (Добавляйте Требования через запятые)</h1>
+        <form id="search-form">
+            <input type="text" id="requirements" placeholder="Введите ваши требования" required>
+            <button type="submit">Поиск курсов</button>
+        </form>
+
+        <div id="courses-list"></div>
+
+        <h2>Создание учебного плана</h2>
+        <button id="create-plan" disabled>Создать учебный план</button>
+        <div id="study-plan"></div>
+
+        <hr>
+
+        <h1>Добавить новый курс</h1>
+        <div class="form-container">
+            <form id="course-form">
+                <label for="title">Название курса:</label>
+                <input type="text" id="title" name="title" placeholder="Введите название курса" required>
+
+                <label for="description">Описание курса:</label>
+                <textarea id="description" name="description" placeholder="Введите описание курса" required></textarea>
+
+                <label for="requirements">Требования к курсу:</label>
+                <textarea id="requirements-new" name="requirements" placeholder="Введите требования для курса" required></textarea>
+
+
+                <button type="button" id="add-requirement">Добавить требование</button>
+
+                <button type="submit">Добавить курс</button>
+            </form>
+
+            <div id="response-message" class="response-message"></div>
+        </div>
+    </div>
+
+    <script>
+
+        const searchForm = document.getElementById('search-form');
+        const coursesList = document.getElementById('courses-list');
+        const createPlanButton = document.getElementById('create-plan');
+        const studyPlan = document.getElementById('study-plan');
+        let selectedCourses = [];
+
+        searchForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const requirements = document.getElementById('requirements').value;
+
+            const response = await fetch('/search_courses', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ requirements }),
+            });
+
+            const courses = await response.json();
+            coursesList.innerHTML = '';
+            selectedCourses = [];
+
+            courses.forEach(course => {
+                const courseItem = document.createElement('div');
+                courseItem.innerHTML = `
+                    <h3>${course.title}</h3>
+                    <p>${course.description}</p>
+                    <p>Требования: ${course.requirements}</p>
+                    <input type="checkbox" data-id="${course.id}">
+                `;
+                coursesList.appendChild(courseItem);
+            });
+
+            createPlanButton.disabled = false;
+        });
+
+        createPlanButton.addEventListener('click', async () => {
+            const checkboxes = coursesList.querySelectorAll('input[type="checkbox"]');
+            selectedCourses = Array.from(checkboxes)
+                .filter(checkbox => checkbox.checked)
+                .map(checkbox => checkbox.dataset.id);
+
+            const response = await fetch('/create_study_plan', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ course_ids: selectedCourses }),
+            });
+
+            const plan = await response.json();
+            studyPlan.innerHTML = `
+                <h3>Учебный план (${plan.total_courses} курса(ов)): </h3>
+                <ul>
+                    ${plan.courses.map(course => `<li>${course.title}: ${course.description}</li>`).join('')}
+                </ul>
+            `;
+        });
+
+        document.getElementById('course-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const title = document.getElementById('title').value.trim();
+            const description = document.getElementById('description').value.trim();
+            const requirements = document.getElementById('requirements-new').value.trim();
+
+            if (!title || !description || !requirements) {
+                displayMessage('Пожалуйста, заполните все поля.', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/add_course', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ title, description, requirements })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    displayMessage('Курс успешно добавлен!', 'success');
+                    clearForm();
+                } else {
+                    displayMessage(result.error || 'Произошла ошибка при добавлении курса.', 'error');
+                }
+            } catch (error) {
+                displayMessage('Произошла ошибка при отправке данных на сервер.', 'error');
+            }
+        });
+
+        function displayMessage(message, type) {
+            const messageBox = document.getElementById('response-message');
+            messageBox.textContent = message;
+            messageBox.className = 'response-message ' + type;
+        }
+
+        function clearForm() {
+            document.getElementById('title').value = '';
+            document.getElementById('description').value = '';
+            document.getElementById('requirements-new').value = '';
+        }
+            
+                document.getElementById('add-requirement').addEventListener('click', () => {
+            const requirementsContainer = document.getElementById('requirements-container');
+            const newRequirementInput = document.createElement('input');
+            newRequirementInput.type = 'text';
+            newRequirementInput.classList.add('requirement-input');
+            newRequirementInput.placeholder = "Введите требование";
+            newRequirementInput.required = true;
+            requirementsContainer.appendChild(newRequirementInput);
+        });
+
+        document.getElementById('course-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const requirements = Array.from(document.querySelectorAll('.requirement-input')).map(input => input.value);
+
+            const response = await fetch('/add_course', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ title, description, requirements }),
+            });
+
+            const result = await response.json();
+document.getElementById('response-message').innerText = result.message || 'Курс успешно добавлен!';
+            document.getElementById('course-form').reset();
+            document.getElementById('requirements-container').innerHTML = '<input type="text" class="requirement-input" placeholder="Введите требование" required>';
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+    <script>
+
+
+
+        // Добавление нового требования к курсу
+        document.getElementById('add-requirement').addEventListener('click', () => {
+            const requirementsContainer = document.getElementById('requirements-container');
+            const newRequirementInput = document.createElement('input');
+            newRequirementInput.type = 'text';
+            newRequirementInput.classList.add('requirement-input');
+            newRequirementInput.placeholder = "Введите требование";
+            newRequirementInput.required = true;
+            requirementsContainer.appendChild(newRequirementInput);
+        });
+
+        // Обработка добавления курса
+        document.getElementById('course-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const requirements = Array.from(document.querySelectorAll('.requirement-input')).map(input => input.value);
+
+            const response = await fetch('/add_course', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ title, description, requirements }),
+            });
+
+            const result = await response.json();
+document.getElementById('response-message').innerText = result.message || 'Курс успешно добавлен!';
+            document.getElementById('course-form').reset();
+            document.getElementById('requirements-container').innerHTML = '<input type="text" class="requirement-input" placeholder="Введите требование" required>';
+        });
+    </script>
